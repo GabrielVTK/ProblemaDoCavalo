@@ -25,6 +25,14 @@
 
     </head>
     <body>
+        
+        <div style="position: absolute; bottom: 25px; left: 15px;">
+            <h4 style="margin: 0 0 10px;">Créditos</h4>
+            <p style="margin: 0;">Gabriel Vinicius Teixeira Kanczewski</p>
+            <p style="margin: 0;">Leonardo Rebello Januario</p>
+            <p style="margin: 0;">Sandro Miguel Weiznmann</p>
+        </div>
+        
         <table id="tabuleiro"></table>
         
         <img src="pocoto.png" alt="Pocotó" style="position: fixed; right: 0; bottom: 0; width: 200px; height: auto;"/>
@@ -35,12 +43,16 @@
         <script>
 
             $(document).ready(function () {
-
+                
+                var passos = 1;
+                var melhorCaminho = null;
+                
                 var linhas = 8;
                 var colunas = 8;
 
                 var vertices = [];
 
+                // Desenha tabuleiro
                 for (var i = 0; i < linhas; i++) {
 
                     $('#tabuleiro').append('<tr id="linha_' + i + '"></tr>');
@@ -58,12 +70,93 @@
 
                         vertices[i * colunas + j] = nodo;
 
-                        $('#tabuleiro #linha_' + i).append('<td id="coluna_' + j + '" style="position: relative; ' + (((i + j) % 2 === 0) ? '' : 'background: #CCC;') + '" data-linha="' + i + '" data-coluna="' + j + '" data-vertice="' + (i * colunas + j) + '" ><span></span><small style="position: absolute; right: 5px; bottom: 0px;">' + (i * colunas + j) + '</small></td>');
+                        $('#tabuleiro #linha_' + i).append('<td id="coluna_' + j + '" style="position: relative; ' + (((i + j) % 2 === 0) ? '' : 'background: #CCC;') + '" data-linha="' + i + '" data-coluna="' + j + '" data-vertice="' + (i * colunas + j) + '" ><span></span><i name="mark" style="position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 100%;"></i><small style="position: absolute; right: 5px; bottom: 0px;">' + (i * colunas + j) + '</small></td>');
                         
                     }
 
                 }
 
+                // Inicia o pathfing ao clicar em uma casa do tabuleiro
+                $(document).on('click', 'td', function() {
+                    
+                    passos = 1;
+
+                    // Reseta os vértices
+                    for (var i = 0; i < vertices.length; i++) {
+                        vertices[i].visitado = false;
+                        vertices[i].anterior = -1;
+                        
+                        $('tr#linha_' + vertices[i].linha + ' td#coluna_' + vertices[i].coluna + ' span').text('');
+
+                        for (var p = 0; p < vertices[i].possibilidades.length; p++) {
+                            vertices[i].possibilidadesVisitadas[p] = false;
+                        }
+                    }
+                    
+                    // Chama a função de busca pelo melhor caminho
+                    var busca = pathfinding(vertices[$(this).data('linha') * colunas + $(this).data('coluna')]);
+                    
+                    // Printa no tabuleiro as posições de cada passo dado pelo cavalo
+                    $('i[name="mark"]').css('background', 'none');
+                    printPosicoes(busca);
+                    
+                    // Borda para interação visual
+                    $('td').css('border-color', '#FFF');
+                    marcaPasso(this);
+                });
+                
+                // Interação visual, borda branca
+                $(document).on('mouseout', 'td', function() {
+                    $('td').css('border-color', '#FFF');
+                });
+                
+                // Interação visual, chama função marcaPasso()
+                $(document).on('mouseover', 'td', function() {
+                    marcaPasso(this);
+                });
+                
+                // Printa as posições no tabuleiro
+                function printPosicoes(nodo) {
+                    
+                    var prox = null;
+                    
+                    while (nodo !== null && passos > 0) {
+                        
+                        if(passos === 1 || passos === 64) {
+                            $('tr#linha_' + nodo.linha + ' td#coluna_' + nodo.coluna + ' i').css('background', 'black');
+                        }
+                        
+                        $('tr#linha_' + nodo.linha + ' td#coluna_' + nodo.coluna + ' span').text(passos);
+                        $('tr#linha_' + nodo.linha + ' td#coluna_' + nodo.coluna).data('teste', 'teste');
+                        
+                        passos--;
+                        prox = nodo;
+                        nodo = vertices[nodo.anterior];
+                    }
+                }
+                
+                // Muda a cor das bordas do nó anterior e posterior
+                // referente ao nó atual
+                function marcaPasso(td) {
+                    var vertice = vertices[$(td).data('linha') * colunas + $(td).data('coluna')]
+                    
+                    $('tr#linha_' + vertice.linha + ' td#coluna_' + vertice.coluna).css('border-color', 'gray');
+                    
+                    if(vertice.anterior !== -1) {
+                        var anterior = vertices[vertice.anterior];
+                        
+                        $('tr#linha_' + anterior.linha + ' td#coluna_' + anterior.coluna).css('border-color', 'blue');
+                    }
+                    
+                    if(vertice.proximo !== -1) {
+                        var proximo = vertices[vertice.proximo];
+                        
+                        $('tr#linha_' + proximo.linha + ' td#coluna_' + proximo.coluna).css('border-color', 'green');
+                    }
+                }
+
+                // Retorna todas as possibilidades de movimento
+                // em determinada casa do tabuleiro
                 function getPossibilidades(linha_origem, coluna_origem) {
 
                     var possibilidades = [];
@@ -97,58 +190,8 @@
                     return possibilidades;
                 }
 
-                var passos = 1;
-
-                $(document).on('click', 'td', function() {
-                    passos = 1;
-
-                    for (var i = 0; i < vertices.length; i++) {
-                        vertices[i].visitado = false;
-                        vertices[i].anterior = -1;
-                        
-                        $('tr#linha_' + vertices[i].linha + ' td#coluna_' + vertices[i].coluna + ' span').text('');
-
-                        for (var p = 0; p < vertices[i].possibilidades.length; p++) {
-                            vertices[i].possibilidadesVisitadas[p] = false;
-                        }
-                    }
-                    
-                    printPosicoes(pathfinding(vertices[$(this).data('linha') * colunas + $(this).data('coluna')]));
-                    
-                    $('td').css('border-color', '#FFF');
-                    marcaPasso(this);
-                });
-                
-                $(document).on('mouseout', 'td', function() {
-                    $('td').css('border-color', '#FFF');
-                });
-                
-                $(document).on('mouseover', 'td', function() {
-                    marcaPasso(this);
-                });
-                
-                function marcaPasso(td) {
-                    var vertice = vertices[$(td).data('linha') * colunas + $(td).data('coluna')]
-                    
-                    $('tr#linha_' + vertice.linha + ' td#coluna_' + vertice.coluna).css('border-color', 'gray');
-                    
-                    if(vertice.anterior !== -1) {
-                        var anterior = vertices[vertice.anterior];
-                        
-                        $('tr#linha_' + anterior.linha + ' td#coluna_' + anterior.coluna).css('border-color', 'blue');
-                    }
-                    
-                    if(vertice.proximo !== -1) {
-                        var proximo = vertices[vertice.proximo];
-                        
-                        $('tr#linha_' + proximo.linha + ' td#coluna_' + proximo.coluna).css('border-color', 'green');
-                    }
-                }
-                
-                var melhorCaminho = null;
-                
+                // Inicializa variáveis para inciar a busca
                 function pathfinding(nodo) {
-
                     nodo.visitado = true;
                     
                     melhorCaminho = null;
@@ -158,6 +201,7 @@
                     return melhorCaminho;
                 }
                 
+                // Loop para a busca de um caminho
                 function pathfindingLoop(nodo) {
 
                     if (passos === linhas * colunas) {
@@ -249,21 +293,6 @@
                     return melhorCaminho;
                 }
                 
-                function printPosicoes(nodo) {
-                    
-                    var prox = null;
-                    
-                    while (nodo !== null && passos > 0) {
-                        
-                        $('tr#linha_' + nodo.linha + ' td#coluna_' + nodo.coluna + ' span').text(passos);
-                        $('tr#linha_' + nodo.linha + ' td#coluna_' + nodo.coluna).data('teste', 'teste');
-                        
-                        passos--;
-                        prox = nodo;
-                        nodo = vertices[nodo.anterior];
-                    }
-                }
-
                 // Verifica quantos caminhos estão disponíveis
                 function getDisponiveis(nodo) {
                     var disponiveis = 0;
