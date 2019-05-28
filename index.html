@@ -8,13 +8,14 @@
         <style>
 
             #tabuleiro {
-                margin: 0 auto;
+                margin: 3% auto 0;
+                border: 2px solid #666;
             }
 
             #tabuleiro td {
                 width: 55px;
                 height: 55px;
-                border: 1px solid #000;
+                border: 2px solid #FFF;
                 text-align: center;
                 vertical-align: middle;
                 cursor: pointer;
@@ -25,6 +26,8 @@
     </head>
     <body>
         <table id="tabuleiro"></table>
+        
+        <img src="pocoto.png" alt="Pocotó" style="position: fixed; right: 0; bottom: 0; width: 200px; height: auto;"/>
 
         <script src="./jquery-2.2.4.min.js"></script>
         <script src="./Nodo.js"></script>
@@ -32,8 +35,6 @@
         <script>
 
             $(document).ready(function () {
-
-                var origem = null;
 
                 var linhas = 8;
                 var colunas = 8;
@@ -43,7 +44,7 @@
                 for (var i = 0; i < linhas; i++) {
 
                     $('#tabuleiro').append('<tr id="linha_' + i + '"></tr>');
-
+                    
                     for (var j = 0; j < colunas; j++) {
 
                         var nodo = new Nodo(i, j);
@@ -57,12 +58,11 @@
 
                         vertices[i * colunas + j] = nodo;
 
-                        $('#tabuleiro #linha_' + i).append('<td id="coluna_' + j + '" ' + (((i + j) % 2 === 0) ? '' : 'style="background: #CCC;"') + ' data-linha="' + i + '" data-coluna="' + j + '" data-vertice="' + (i * colunas + j) + '" ><span></span></td>');
+                        $('#tabuleiro #linha_' + i).append('<td id="coluna_' + j + '" style="position: relative; ' + (((i + j) % 2 === 0) ? '' : 'background: #CCC;') + '" data-linha="' + i + '" data-coluna="' + j + '" data-vertice="' + (i * colunas + j) + '" ><span></span><small style="position: absolute; right: 5px; bottom: 0px;">' + (i * colunas + j) + '</small></td>');
+                        
                     }
 
                 }
-
-                console.log(vertices);
 
                 function getPossibilidades(linha_origem, coluna_origem) {
 
@@ -99,10 +99,7 @@
 
                 var passos = 1;
 
-                $('td').on('click', function () {
-
-                    origem = this;
-
+                $(document).on('click', 'td', function() {
                     passos = 1;
 
                     for (var i = 0; i < vertices.length; i++) {
@@ -115,78 +112,154 @@
                             vertices[i].possibilidadesVisitadas[p] = false;
                         }
                     }
-
-                    pathfinding();
+                    
+                    printPosicoes(pathfinding(vertices[$(this).data('linha') * colunas + $(this).data('coluna')]));
+                    
+                    $('td').css('border-color', '#FFF');
+                    marcaPasso(this);
                 });
-
-                function pathfinding() {
-
-                    var nodo = vertices[$(origem).data('linha') * colunas + $(origem).data('coluna')];
+                
+                $(document).on('mouseout', 'td', function() {
+                    $('td').css('border-color', '#FFF');
+                });
+                
+                $(document).on('mouseover', 'td', function() {
+                    marcaPasso(this);
+                });
+                
+                function marcaPasso(td) {
+                    var vertice = vertices[$(td).data('linha') * colunas + $(td).data('coluna')]
+                    
+                    $('tr#linha_' + vertice.linha + ' td#coluna_' + vertice.coluna).css('border-color', 'gray');
+                    
+                    if(vertice.anterior !== -1) {
+                        var anterior = vertices[vertice.anterior];
+                        
+                        $('tr#linha_' + anterior.linha + ' td#coluna_' + anterior.coluna).css('border-color', 'blue');
+                    }
+                    
+                    if(vertice.proximo !== -1) {
+                        var proximo = vertices[vertice.proximo];
+                        
+                        $('tr#linha_' + proximo.linha + ' td#coluna_' + proximo.coluna).css('border-color', 'green');
+                    }
+                }
+                
+                var melhorCaminho = null;
+                
+                function pathfinding(nodo) {
 
                     nodo.visitado = true;
-
-                    nodo = pathfindingLoop(nodo);
-
-                    printPosicoes(nodo);
+                    
+                    melhorCaminho = null;
+                    
+                    melhorCaminho = pathfindingLoop(nodo);
+                    
+                    return melhorCaminho;
                 }
-
+                
                 function pathfindingLoop(nodo) {
 
                     if (passos === linhas * colunas) {
-                        console.log('passos = ' + (linhas * colunas));
                         return nodo;
                     }
-
+                    
                     var melhorNo = null;
-
-                    // Verifica quantos caminhos estão disponíveis
-                    var disponiveis = getDisponiveis(nodo);
-
-                    if (disponiveis === 0) {
-                        console.log('disponiveis = 0');
-                        alert('fudeu?');
-                        return nodo;
+                    
+                    var salvaPossibilidades = [];
+                    
+                    for(var i = 0; i < nodo.possibilidades.length; i++) {
+                        salvaPossibilidades[i] = nodo.possibilidadesVisitadas[i];
                     }
+                    
+                    while(melhorCaminho === null) {
+                        
+                        // Verifica quantos caminhos estão disponíveis
+                        var disponiveis = getDisponiveis({possibilidadesVisitadas: salvaPossibilidades});
 
-                    // Pega melhor nó do nó atual
-                    for (var i = 0; i < nodo.possibilidades.length; i++) {
+                        if (disponiveis === 0) {
+                            
+                            if(passos === 1) {
+                                alert('Impossivel de resolver!!');
+                                break;
+                            }
+                            
+                            for(var i = 0; i < nodo.possibilidades.length; i++) {
+                                
+                                if(nodo.anterior !== nodo.possibilidades[i]) {
+                                    vertices[nodo.possibilidades[i]].possibilidadesVisitadas[vertices[nodo.possibilidades[i]].possibilidades.indexOf(nodo.linha * colunas + nodo.coluna)] = false;
+                                }
+                                
+                            }
+                            
+                            vertices[nodo.linha * colunas + nodo.coluna].possibilidadesVisitadas = salvaPossibilidades;
+                            vertices[nodo.linha * colunas + nodo.coluna].visitado = false;
+                            vertices[nodo.linha * colunas + nodo.coluna].anterior = -1;
+                            
+                            passos--;
+                            
+                            return null;
+                        }
+                        
+                        melhorNo = null;
+                        
+                        // Pega melhor nó do nó atual
+                        for (var i = 0; i < nodo.possibilidades.length; i++) {
 
-                        var proximoNo = vertices[nodo.possibilidades[i]];
+                            var proximoNo = vertices[nodo.possibilidades[i]];
 
-                        // Seta o nó atual como visitado no proximo nó
-                        proximoNo.possibilidadesVisitadas[proximoNo.possibilidades.indexOf(nodo.linha * colunas + nodo.coluna)] = true;
+                            // Seta o nó atual como visitado no proximo nó
+                            proximoNo.possibilidadesVisitadas[proximoNo.possibilidades.indexOf(nodo.linha * colunas + nodo.coluna)] = true;
 
-                        if (!proximoNo.visitado) {
-                            if (melhorNo === null || getDisponiveis(melhorNo) > getDisponiveis(proximoNo)) {
-                                melhorNo = proximoNo;
+                            if (!proximoNo.visitado && !salvaPossibilidades[nodo.possibilidades.indexOf(proximoNo.linha * colunas + proximoNo.coluna)]) {
+                                if (melhorNo === null || getDisponiveis(melhorNo) > getDisponiveis(proximoNo)) {
+                                    melhorNo = proximoNo;
+                                }
                             }
                         }
-                    }
-
-                    if (melhorNo === null) {
-                        alert('melhorNo = null');
-                        return null;
-                    }
-
-                    nodo.possibilidadesVisitadas[nodo.possibilidades.indexOf(melhorNo.linha * colunas + melhorNo.coluna)] = true;
-                    melhorNo.visitado = true;
-                    melhorNo.anterior = nodo.linha * colunas + nodo.coluna;
-
-                    passos++;
-
-                    return pathfindingLoop(melhorNo);
-                }
-
-                function printPosicoes(nodo) {
-
-                    console.log('printa');
-                    console.log(nodo);
-
-                    while (nodo !== null && passos > 0) {
-
-                        $('tr#linha_' + nodo.linha + ' td#coluna_' + nodo.coluna + ' span').text(passos);
-                        passos--;
                         
+                        if(melhorNo === null) {
+                            return null;
+                        }
+                        
+                        salvaPossibilidades[nodo.possibilidades.indexOf(melhorNo.linha * colunas + melhorNo.coluna)] = true;
+                        melhorNo.visitado = true;
+                        melhorNo.anterior = nodo.linha * colunas + nodo.coluna;
+                        
+                        var gravaPossibilidades = [];
+                        
+                        for(var k = 0; k < melhorNo.possibilidadesVisitadas.length; k++) {
+                            gravaPossibilidades[k] = melhorNo.possibilidadesVisitadas[k];
+                        }
+
+                        passos++;
+                        
+                        nodo.proximo = melhorNo.linha * colunas + melhorNo.coluna;
+                        
+                        melhorCaminho = pathfindingLoop(melhorNo);
+                        
+                        if(melhorCaminho === null) {
+                            melhorNo.visitado = false;
+                            melhorNo.anterior = -1;
+                            melhorNo.possibilidadesVisitadas = gravaPossibilidades;
+                        }
+                        
+                    }
+
+                    return melhorCaminho;
+                }
+                
+                function printPosicoes(nodo) {
+                    
+                    var prox = null;
+                    
+                    while (nodo !== null && passos > 0) {
+                        
+                        $('tr#linha_' + nodo.linha + ' td#coluna_' + nodo.coluna + ' span').text(passos);
+                        $('tr#linha_' + nodo.linha + ' td#coluna_' + nodo.coluna).data('teste', 'teste');
+                        
+                        passos--;
+                        prox = nodo;
                         nodo = vertices[nodo.anterior];
                     }
                 }
@@ -195,7 +268,7 @@
                 function getDisponiveis(nodo) {
                     var disponiveis = 0;
 
-                    for (var i = 0; i < nodo.possibilidades.length; i++) {
+                    for (var i = 0; i < nodo.possibilidadesVisitadas.length; i++) {
                         if (!nodo.possibilidadesVisitadas[i]) {
                             disponiveis++;
                         }
@@ -203,7 +276,7 @@
 
                     return disponiveis;
                 }
-
+                
             });
 
         </script>

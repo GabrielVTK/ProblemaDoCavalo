@@ -4,6 +4,7 @@ class Nodo {
         this.linha = linha;
         this.coluna = coluna;
         
+        this.proximo = -1;
         this.anterior = -1;
         this.visitado = false;
         
