@@ -122,7 +122,7 @@
                     
                     while (nodo !== null && passos > 0) {
                         
-                        if(passos === 1 || passos === 64) {
+                        if(passos === 1 || passos === linhas * colunas) {
                             $('tr#linha_' + nodo.linha + ' td#coluna_' + nodo.coluna + ' i').css('background', 'black');
                         }
                         
